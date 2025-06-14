@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>定時音效提醒工具</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 2rem;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 2rem;
+      font-size: 28px;
+    }
+    .card {
+      display: inline-block;
+      background-color: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .input-group {
+      margin-bottom: 2rem;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+      width: 610px;
+      height: 50px;
+      font-size: 20px;
+      padding: 0 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    input[type=number]:focus {
+      border-color: #007bff;
+    }
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    button {
+      width: 300px;
+      height: 300px;
+      font-size: 30px;
+      margin: 1rem;
+      border-radius: 20px;
+      border: none;
+      color: black;
+      background-color: #f5e1c5; /* 奶茶色 */
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.1s;
+    }
+    button:hover {
+      background-color: #e4cba9;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    #status {
+      margin-top: 2rem;
+      font-weight: bold;
+      color: #28a745;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔔 叫 AI 寫的音效提醒工具</h2>
+
+  <div class="card">
+    <div class="input-group">
+      <label for="intervalInput" style="display:block; font-size:18px; margin-bottom:8px;">提醒間隔（秒）：</label>
+      <input type="number" id="intervalInput" value="5" min="1">
+    </div>
+
+    <div id="buttonGroup">
+      <button id="startButton" onclick="startReminder()">▶️ 開始</button>
+    </div>
+
+    <p id="status">尚未啟動提醒</p>
+  </div>
+
+  <audio id="reminderAudio" src="ww.mp3" preload="auto"></audio>
+
+  <script>
+    let intervalId = null;
+
+    function startReminder() {
+      const intervalInput = document.getElementById('intervalInput');
+      const seconds = parseInt(intervalInput.value, 10);
+      const audio = document.getElementById('reminderAudio');
+
+      if (isNaN(seconds) || seconds < 1) {
+        alert("請輸入有效的秒數（至少 1 秒）");
+        return;
+      }
+
+      if (intervalId) clearInterval(intervalId);
+
+      intervalId = setInterval(() => {
+        audio.currentTime = 0;
+        audio.play().catch(err => console.error("播放音效失敗：", err));
+      }, seconds * 1000);
+
+      document.getElementById('buttonGroup').innerHTML = `
+        <button onclick="restartReminder()">🔁 重新開始</button>
+        <button onclick="stopReminder()">⏹ 結束</button>
+      `;
+
+      document.getElementById('status').textContent = `⏳ 提醒啟動中，每 ${seconds} 秒播放一次`;
+    }
+
+    function restartReminder() {
+      startReminder();
+    }
+
+    function stopReminder() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+
+      document.getElementById('buttonGroup').innerHTML = `
+        <button id="startButton" onclick="startReminder()">▶️ 開始</button>
+      `;
+
+      document.getElementById('status').textContent = "⏹ 已停止提醒";
+    }
+  </script>
+</body>
+</html>
