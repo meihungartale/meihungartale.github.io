@@ -8,22 +8,61 @@
       box-sizing: border-box;
     }
     body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background-color: #f9f9f9;
-      margin: 0;
-      padding: 2rem;
-      text-align: center;
-    }
+  font-family: "Segoe UI", Arial, sans-serif;
+  background-color: #f9f9f9;
+  margin: 0;
+  padding: 0; /* 移除 padding */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 水平置中 */
+}
     h2 {
-      margin-bottom: 2rem;
       font-size: 28px;
+      text-align: center;
+      width: 100%;
+    }
+    .container {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 2rem;
+  max-width: 1000px;
+}
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 1rem;
+      background-color: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 260px;
+    }
+    .sidebar h3 {
+      font-size: 18px;
+      margin-bottom: 1rem;
+    }
+    .sidebar button {
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-radius: 10px;
+      font-size: 16px;
+      background-color: #e0e0e0;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .sidebar button:hover {
+      background-color: #ccc;
     }
     .card {
-      display: inline-block;
       background-color: white;
       padding: 2rem;
       border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      flex-grow: 1;
     }
     .input-group {
       margin-bottom: 2rem;
@@ -31,7 +70,7 @@
     input[type=number] {
       -moz-appearance: textfield;
       appearance: textfield;
-      width: 610px;
+      width: 100%;
       height: 50px;
       font-size: 20px;
       padding: 0 16px;
@@ -48,7 +87,13 @@
       -webkit-appearance: none;
       margin: 0;
     }
-    button {
+    #buttonGroup {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    #buttonGroup button {
       width: 300px;
       height: 300px;
       font-size: 30px;
@@ -56,14 +101,14 @@
       border-radius: 20px;
       border: none;
       color: black;
-      background-color: #f5e1c5; /* 奶茶色 */
+      background-color: #f5e1c5;
       cursor: pointer;
       transition: background-color 0.3s, transform 0.1s;
     }
-    button:hover {
+    #buttonGroup button:hover {
       background-color: #e4cba9;
     }
-    button:active {
+    #buttonGroup button:active {
       transform: scale(0.98);
     }
     #status {
@@ -72,28 +117,70 @@
       color: #28a745;
       font-size: 20px;
     }
+    .sound-btn {
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-radius: 10px;
+      font-size: 16px;
+      background-color: #e0e0e0;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .sound-btn:hover {
+      background-color: #ccc;
+    }
+
+    .sound-btn.active-sound-btn {
+      background-color: #ffc107; /* 選取時用亮色 */
+      font-weight: bold;
+      border: 2px solid #ff9800;
+    }
   </style>
 </head>
 <body>
   <h2>🔔 叫 AI 寫的音效提醒工具</h2>
 
-  <div class="card">
-    <div class="input-group">
-      <label for="intervalInput" style="display:block; font-size:18px; margin-bottom:8px;">提醒間隔（秒）：</label>
-      <input type="number" id="intervalInput" value="5" min="1">
+  <div class="container">
+    <div class="sidebar">
+      <h3>請選擇你要的通知聲</h3>
+      <button class="sound-btn" onclick="changeSound(this, 'ww.mp3')">一般</button>
+      <button class="sound-btn" onclick="changeSound(this, 'shuni_1.mp3')">薯泥的叫聲</button>
     </div>
 
-    <div id="buttonGroup">
-      <button id="startButton" onclick="startReminder()">▶️ 開始</button>
-    </div>
+    <div class="card">
+      <div class="input-group">
+        <label for="intervalInput" style="display:block; font-size:18px; margin-bottom:8px;">提醒間隔（秒）：</label>
+        <input type="number" id="intervalInput" value="5" min="1">
+      </div>
 
-    <p id="status">尚未啟動提醒</p>
+      <div id="buttonGroup">
+        <button id="startButton" onclick="startReminder()">▶️ 開始</button>
+      </div>
+
+      <p id="status">尚未啟動提醒</p>
+    </div>
   </div>
 
   <audio id="reminderAudio" src="ww.mp3" preload="auto"></audio>
 
   <script>
     let intervalId = null;
+
+    function changeSound(buttonElement, src) {
+      const audio = document.getElementById('reminderAudio');
+      audio.src = src;
+      audio.load();
+
+      // 移除所有音效按鈕的 active 狀態
+      const soundButtons = document.querySelectorAll('.sound-btn');
+      soundButtons.forEach(btn => btn.classList.remove('active-sound-btn'));
+
+      // 加上目前這顆的 active 樣式
+      buttonElement.classList.add('active-sound-btn');
+    }
 
     function startReminder() {
       const intervalInput = document.getElementById('intervalInput');
