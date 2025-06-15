@@ -146,7 +146,7 @@
   <div class="container">
     <div class="sidebar">
       <h3>請選擇你要的通知聲</h3>
-      <button class="sound-btn" onclick="changeSound(this, 'ww.mp3')">一般</button>
+      <button id="defaultSoundBtn" class="sound-btn" onclick="changeSound(this, 'ww.mp3')">一般</button>
       <button class="sound-btn" onclick="changeSound(this, 'shuni_1.mp3')">薯泥的叫聲</button>
     </div>
 
@@ -174,13 +174,11 @@
       audio.src = src;
       audio.load();
 
-      // 移除所有音效按鈕的 active 狀態
       const soundButtons = document.querySelectorAll('.sound-btn');
       soundButtons.forEach(btn => btn.classList.remove('active-sound-btn'));
-
-      // 加上目前這顆的 active 樣式
       buttonElement.classList.add('active-sound-btn');
     }
+
 
     function startReminder() {
       const intervalInput = document.getElementById('intervalInput');
@@ -195,9 +193,11 @@
       if (intervalId) clearInterval(intervalId);
 
       intervalId = setInterval(() => {
+        const audio = document.getElementById('reminderAudio'); // ← 每次都抓最新的 audio
         audio.currentTime = 0;
         audio.play().catch(err => console.error("播放音效失敗：", err));
       }, seconds * 1000);
+
 
       document.getElementById('buttonGroup').innerHTML = `
         <button onclick="restartReminder()">🔁 重新開始</button>
@@ -223,6 +223,12 @@
 
       document.getElementById('status').textContent = "⏹ 已停止提醒";
     }
+
+    window.onload = function () {
+      // 自動選取預設音效「一般」
+      const defaultBtn = document.getElementById('defaultSoundBtn');
+      changeSound(defaultBtn, 'ww.mp3');
+    };
   </script>
 </body>
 </html>
