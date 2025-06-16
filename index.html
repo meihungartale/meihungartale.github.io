@@ -8,27 +8,27 @@
       box-sizing: border-box;
     }
     body {
-  font-family: "Segoe UI", Arial, sans-serif;
-  background-color: #f9f9f9;
-  margin: 0;
-  padding: 0; /* 移除 padding */
-  display: flex;
-  flex-direction: column;
-  align-items: center; /* 水平置中 */
-}
+      font-family: "Segoe UI", Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     h2 {
       font-size: 28px;
       text-align: center;
       width: 100%;
     }
     .container {
-  display: flex;
-  gap: 2rem;
-  justify-content: center;
-  align-items: flex-start;
-  margin-top: 2rem;
-  max-width: 1000px;
-}
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      align-items: flex-start;
+      margin-top: 2rem;
+      max-width: 1000px;
+    }
     .sidebar {
       display: flex;
       flex-direction: column;
@@ -87,12 +87,32 @@
       -webkit-appearance: none;
       margin: 0;
     }
+    #progressWrapper {
+      display: none;
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    #progressBarContainer {
+      width: 100%;
+      background-color: #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    #progressBar {
+      width: 100%;
+      height: 30px;
+      background-color: #f5e1c5;
+      text-align: center;
+      color: black;
+      line-height: 30px;
+      font-size: 18px;
+      transform-origin: left center;
+    }
     #buttonGroup {
       display: flex;
       gap: 1rem;
       justify-content: center;
     }
-
     #buttonGroup button {
       width: 300px;
       height: 300px;
@@ -111,12 +131,6 @@
     #buttonGroup button:active {
       transform: scale(0.98);
     }
-    #status {
-      margin-top: 2rem;
-      font-weight: bold;
-      color: #28a745;
-      font-size: 20px;
-    }
     .sound-btn {
       width: 100%;
       margin-bottom: 1rem;
@@ -128,26 +142,64 @@
       cursor: pointer;
       transition: background-color 0.3s;
     }
-
     .sound-btn:hover {
       background-color: #ccc;
     }
-
     .sound-btn.active-sound-btn {
-      background-color: #ffc107; /* 選取時用亮色 */
+      background-color: #ffc107;
       font-weight: bold;
       border: 2px solid #ff9800;
+    }
+    .progress-container {
+      width: 100%;
+      max-width: 1000px;
+      padding: 0 1.5rem;
+      margin-top: 1rem;
+
+      background-color: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    input[type=range] {
+      width: 100%;
+      height: 6px;
+      background: #ddd;
+      border-radius: 5px;
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #ffc107;
+      cursor: pointer;
+      box-shadow: 0 0 2px rgba(0,0,0,0.5);
     }
   </style>
 </head>
 <body>
   <h2>🔔 叫 AI 寫的音效提醒工具</h2>
 
+  <div class="progress-container">
+    <div id="progressWrapper">
+      <div id="progressBarContainer">
+        <div id="progressBar">0 秒</div>
+      </div>
+    </div>
+  </div>
+
   <div class="container">
     <div class="sidebar">
       <h3>請選擇你要的通知聲</h3>
       <button id="defaultSoundBtn" class="sound-btn" onclick="changeSound(this, 'ww.mp3')">一般</button>
       <button class="sound-btn" onclick="changeSound(this, 'shuni_1.mp3')">薯泥的叫聲</button>
+
+      <div style="margin-top: 1rem; width: 100%;">
+        <label for="volumeControl" style="font-size: 16px; display: block; margin-bottom: 8px;">🔊 音量</label>
+        <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="1">
+      </div>
     </div>
 
     <div class="card">
@@ -159,8 +211,6 @@
       <div id="buttonGroup">
         <button id="startButton" onclick="startReminder()">▶️ 開始</button>
       </div>
-
-      <p id="status">尚未啟動提醒</p>
     </div>
   </div>
 
@@ -168,6 +218,9 @@
 
   <script>
     let intervalId = null;
+    let progressIntervalId = null;
+    let startTime = null;
+    let totalSeconds = null;
 
     function changeSound(buttonElement, src) {
       const audio = document.getElementById('reminderAudio');
@@ -179,36 +232,67 @@
       buttonElement.classList.add('active-sound-btn');
     }
 
-
     function startReminder() {
       const intervalInput = document.getElementById('intervalInput');
-      const seconds = parseInt(intervalInput.value, 10);
+      totalSeconds = parseInt(intervalInput.value, 10);
       const audio = document.getElementById('reminderAudio');
 
-      if (isNaN(seconds) || seconds < 1) {
+      if (isNaN(totalSeconds) || totalSeconds < 1) {
         alert("請輸入有效的秒數（至少 1 秒）");
         return;
       }
 
       if (intervalId) clearInterval(intervalId);
+      if (progressIntervalId) clearInterval(progressIntervalId);
+
+      document.getElementById('progressWrapper').style.display = 'block';
+
+      startTime = Date.now();
+
+      progressIntervalId = setInterval(() => {
+        const now = Date.now();
+        const elapsed = (now - startTime) / 1000;
+        let remaining = totalSeconds - elapsed;
+
+        const bar = document.getElementById('progressBar');
+
+        if (remaining <= 0) {
+          // 立即重設寬度與文字，無過渡
+          bar.style.transition = 'none';
+          bar.style.width = '100%';
+          bar.textContent = `${totalSeconds} 秒`;
+
+          startTime = Date.now(); // reset timer
+          return;
+        }
+
+        // 正常倒數階段，使用過渡動畫
+        const percent = (remaining / totalSeconds) * 100;
+        bar.style.transition = 'width 0.1s linear';
+        bar.style.width = `${percent}%`;
+        bar.textContent = `${Math.ceil(remaining)} 秒`;
+      }, 100);
 
       intervalId = setInterval(() => {
-        const audio = document.getElementById('reminderAudio'); // ← 每次都抓最新的 audio
         audio.currentTime = 0;
         audio.play().catch(err => console.error("播放音效失敗：", err));
-      }, seconds * 1000);
-
+      }, totalSeconds * 1000);
 
       document.getElementById('buttonGroup').innerHTML = `
         <button onclick="restartReminder()">🔁 重新開始</button>
         <button onclick="stopReminder()">⏹ 結束</button>
       `;
-
-      document.getElementById('status').textContent = `⏳ 提醒啟動中，每 ${seconds} 秒播放一次`;
     }
 
     function restartReminder() {
-      startReminder();
+      const bar = document.getElementById('progressBar');
+      bar.style.transition = 'none';
+      bar.style.width = '100%';
+      bar.textContent = `${totalSeconds} 秒`;
+
+      setTimeout(() => {
+        startReminder();
+      }, 30); // 確保下一輪動畫不會被禁用
     }
 
     function stopReminder() {
@@ -216,18 +300,34 @@
         clearInterval(intervalId);
         intervalId = null;
       }
+      if (progressIntervalId) {
+        clearInterval(progressIntervalId);
+        progressIntervalId = null;
+      }
+
+      document.getElementById('progressWrapper').style.display = 'none';
 
       document.getElementById('buttonGroup').innerHTML = `
         <button id="startButton" onclick="startReminder()">▶️ 開始</button>
       `;
-
-      document.getElementById('status').textContent = "⏹ 已停止提醒";
     }
 
     window.onload = function () {
-      // 自動選取預設音效「一般」
       const defaultBtn = document.getElementById('defaultSoundBtn');
       changeSound(defaultBtn, 'ww.mp3');
+    };
+
+    window.onload = function () {
+      const defaultBtn = document.getElementById('defaultSoundBtn');
+      changeSound(defaultBtn, 'ww.mp3');
+
+      const volumeSlider = document.getElementById('volumeControl');
+      const audio = document.getElementById('reminderAudio');
+      audio.volume = volumeSlider.value;
+
+      volumeSlider.addEventListener('input', () => {
+        audio.volume = volumeSlider.value;
+      });
     };
   </script>
 </body>
