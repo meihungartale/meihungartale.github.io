@@ -107,7 +107,6 @@
       line-height: 30px;
       font-size: 18px;
       transform-origin: left center;
-      transition: width 0.1s linear;
     }
     #buttonGroup {
       display: flex;
@@ -218,120 +217,119 @@
 
   <audio id="reminderAudio" src="ww.mp3" preload="auto"></audio>
 
-<script>
-  let reminderTimer = null;
-  let startTime = 0;
-  let duration = 0;
-  let nextPlayTime = 0;
-  let running = false;
-  let selectedSound = 'ww.mp3';
-  let audio = null;
+  <script>
+    let intervalId = null;
+    let progressIntervalId = null;
+    let startTime = null;
+    let totalSeconds = null;
 
-  function changeSound(buttonElement, src) {
-    selectedSound = src;
-    audio.src = selectedSound;
-    audio.load();
+    function changeSound(buttonElement, src) {
+      const audio = document.getElementById('reminderAudio');
+      audio.src = src;
+      audio.load();
 
-    document.querySelectorAll('.sound-btn').forEach(btn => btn.classList.remove('active-sound-btn'));
-    buttonElement.classList.add('active-sound-btn');
-  }
-
-  function startReminder() {
-    duration = parseInt(document.getElementById('intervalInput').value, 10);
-    if (isNaN(duration) || duration < 1) {
-      alert("請輸入有效的秒數（至少 1 秒）");
-      return;
+      const soundButtons = document.querySelectorAll('.sound-btn');
+      soundButtons.forEach(btn => btn.classList.remove('active-sound-btn'));
+      buttonElement.classList.add('active-sound-btn');
     }
 
-    stopReminder(); // 防止重複啟動
+    function startReminder() {
+      const intervalInput = document.getElementById('intervalInput');
+      totalSeconds = parseInt(intervalInput.value, 10);
+      const audio = document.getElementById('reminderAudio');
 
-    startTime = performance.now();
-    nextPlayTime = startTime + duration * 1000;
-    running = true;
+      if (isNaN(totalSeconds) || totalSeconds < 1) {
+        alert("請輸入有效的秒數（至少 1 秒）");
+        return;
+      }
 
-    document.getElementById('progressWrapper').style.display = 'block';
+      if (intervalId) clearInterval(intervalId);
+      if (progressIntervalId) clearInterval(progressIntervalId);
 
-    reminderLoop();
-    document.getElementById('buttonGroup').innerHTML = `
-      <button onclick="restartReminder()">🔁 重新開始</button>
-      <button onclick="stopReminder()">⏹ 結束</button>
-    `;
-  }
+      document.getElementById('progressWrapper').style.display = 'block';
 
-  let lastProgressUpdate = 0;
+      startTime = Date.now();
 
-  function reminderLoop() {
-    if (!running) return;
+      progressIntervalId = setInterval(() => {
+        const now = Date.now();
+        const elapsed = (now - startTime) / 1000;
+        let remaining = totalSeconds - elapsed;
 
-    const now = performance.now();
-    const elapsed = now - startTime;
-    const percent = Math.max(0, 100 - (elapsed / (duration * 1000)) * 100);
+        const bar = document.getElementById('progressBar');
 
-    const bar = document.getElementById('progressBar');
-    bar.style.width = `${percent}%`;
+        if (remaining <= 0) {
+          // 立即重設寬度與文字，無過渡
+          bar.style.transition = 'none';
+          bar.style.width = '100%';
+          bar.textContent = `${totalSeconds} 秒`;
 
-    // 文字數字只每秒更新一次
-    const sec = Math.ceil((duration * 1000 - elapsed) / 1000);
-    if (sec !== parseInt(bar.textContent)) {
-      bar.textContent = `${sec} 秒`;
-    }
-
-    if (now >= nextPlayTime) {
-      playSound();
-      startTime = now;
-      nextPlayTime = now + duration * 1000;
-    }
-
-    requestAnimationFrame(reminderLoop);
-  }
-
-  function playSound() {
-    if (!audio) return;
-
-    audio.currentTime = 0;
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(err => {
-        console.warn("播放音效失敗，可能因為背景頁或瀏覽器限制", err);
-        // 可加上通知提醒
-        if (Notification.permission === "granted") {
-          new Notification("⏰ 音效提醒", { body: "提醒時間到了！" });
+          startTime = Date.now(); // reset timer
+          return;
         }
-      });
+
+        // 正常倒數階段，使用過渡動畫
+        const percent = (remaining / totalSeconds) * 100;
+        bar.style.transition = 'width 0.1s linear';
+        bar.style.width = `${percent}%`;
+        bar.textContent = `${Math.ceil(remaining)} 秒`;
+      }, 100);
+
+      intervalId = setInterval(() => {
+        audio.currentTime = 0;
+        audio.play().catch(err => console.error("播放音效失敗：", err));
+      }, totalSeconds * 1000);
+
+      document.getElementById('buttonGroup').innerHTML = `
+        <button onclick="restartReminder()">🔁 重新開始</button>
+        <button onclick="stopReminder()">⏹ 結束</button>
+      `;
     }
-  }
 
-  function stopReminder() {
-    running = false;
-    document.getElementById('progressWrapper').style.display = 'none';
-    document.getElementById('buttonGroup').innerHTML = `
-      <button id="startButton" onclick="startReminder()">▶️ 開始</button>
-    `;
-  }
+    function restartReminder() {
+      const bar = document.getElementById('progressBar');
+      bar.style.transition = 'none';
+      bar.style.width = '100%';
+      bar.textContent = `${totalSeconds} 秒`;
 
-  function restartReminder() {
-    stopReminder();
-    setTimeout(() => startReminder(), 50);
-  }
+      setTimeout(() => {
+        startReminder();
+      }, 30); // 確保下一輪動畫不會被禁用
+    }
 
-  window.onload = function () {
-    audio = document.getElementById('reminderAudio');
-    audio.src = selectedSound;
+    function stopReminder() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      if (progressIntervalId) {
+        clearInterval(progressIntervalId);
+        progressIntervalId = null;
+      }
 
-    const defaultBtn = document.getElementById('defaultSoundBtn');
-    changeSound(defaultBtn, selectedSound);
+      document.getElementById('progressWrapper').style.display = 'none';
 
-    const volumeSlider = document.getElementById('volumeControl');
-    audio.volume = volumeSlider.value;
-    volumeSlider.addEventListener('input', () => {
+      document.getElementById('buttonGroup').innerHTML = `
+        <button id="startButton" onclick="startReminder()">▶️ 開始</button>
+      `;
+    }
+
+    window.onload = function () {
+      const defaultBtn = document.getElementById('defaultSoundBtn');
+      changeSound(defaultBtn, 'ww.mp3');
+    };
+
+    window.onload = function () {
+      const defaultBtn = document.getElementById('defaultSoundBtn');
+      changeSound(defaultBtn, 'ww.mp3');
+
+      const volumeSlider = document.getElementById('volumeControl');
+      const audio = document.getElementById('reminderAudio');
       audio.volume = volumeSlider.value;
-    });
 
-    // 詢問通知權限
-    if ("Notification" in window && Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
-  };
-</script>
+      volumeSlider.addEventListener('input', () => {
+        audio.volume = volumeSlider.value;
+      });
+    };
+  </script>
 </body>
 </html>
